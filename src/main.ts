@@ -8,8 +8,8 @@ const client = new Client({
   deviceName: "lenovo L79031",
   gateways: [
     {
-      name: "local",
-      uri: "http://localhost:3000/cct_ws",
+      name: "boboan.net",
+      uri: "https://boboan.net/cct_ws",
       opts:{
         transports: ['websocket'],
         path: '/socket.io',
