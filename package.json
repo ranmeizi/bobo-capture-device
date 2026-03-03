@@ -1,0 +1,23 @@
+{
+  "name": "bobo-capture-device",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node src/main.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.27.0",
+  "devDependencies": {
+    "@types/puppeteer-core": "^7.0.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "axios": "^1.13.6",
+    "cdp-client-tool": "^1.0.3",
+    "dayjs": "^1.11.19"
+  }
+}
