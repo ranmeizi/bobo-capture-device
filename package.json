@@ -4,8 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node src/main.ts",
-    "setup:scripts": "ln -sfn $(pwd)/private_scripts ./local_scripts/private_scripts"
+    "start": "ts-node src/main.ts"
   },
   "keywords": [],
   "author": "",
