@@ -10,11 +10,15 @@ const client = new Client({
     {
       name: "boboan.net",
       uri: "https://boboan.net/cct_ws",
-      opts:{
+      opts: {
         transports: ['websocket'],
         path: '/socket.io',
       }
     },
+    {
+      name: 'private-yd-28',
+      uri: 'http://192.168.66.59:3000',
+    }
   ],
 });
 
