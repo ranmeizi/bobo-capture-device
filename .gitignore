@@ -1,2 +1,4 @@
 node_modules/
 private_scripts/
+# 本地符号链接，方便在 local_scripts 中访问 private_scripts
+local_scripts/private_scripts

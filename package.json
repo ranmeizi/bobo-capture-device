@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "ts-node src/main.ts",
-    "link:scripts": "ln -sfn $(pwd)/local_scripts ./local_scripts_link && ln -sfn $(pwd)/private_scripts ./private_scripts_link",
-    "unlink:scripts": "rm -f ./local_scripts_link ./private_scripts_link"
+    "setup:scripts": "ln -sfn $(pwd)/private_scripts ./local_scripts/private_scripts"
   },
   "keywords": [],
   "author": "",
