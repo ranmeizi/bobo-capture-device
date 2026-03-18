@@ -15,14 +15,14 @@ const client = new Client({
         path: '/socket.io',
       }
     },
-    {
-      name: 'private-yd-28',
-      uri: 'http://192.168.240.194:3000/cct_ws',
-      opts: {
-        transports: ['websocket'],
-        path: '/socket.io',
-      }
-    }
+    // {
+    //   name: 'private-yd-28',
+    //   uri: 'http://192.168.240.194:3000/cct_ws',
+    //   opts: {
+    //     transports: ['websocket'],
+    //     path: '/socket.io',
+    //   }
+    // }
   ],
 });
 

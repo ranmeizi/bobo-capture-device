@@ -2,13 +2,10 @@ const axios = require('axios')
 const dayjs = require('dayjs')
 const utc = require('dayjs/plugin/utc')
 const timezone = require('dayjs/plugin/timezone')
+const { sleep, launchBrowser, logger } = require("cdp-client-tool");
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
-
-function sleep(timeout) {
-    return new Promise(resolve => setTimeout(resolve, timeout))
-}
 
 // 提取消息关键字的正则
 const checkReg = /<.+> .+ (got|executed|stole)/;
@@ -36,159 +33,158 @@ const TYPES = {
 };
 
 
-
-/**
- * @type {import('cdp-client-tool').excuteFn}
- */
-async function capture(ctx) {
-    const browser = ctx.browser
-    const logger = ctx.logger;
-
-    const page = await browser.newPage();
-
-    // 监听请求
-    const subscriber = new RequestSubscriber(page);
-
-    let news_smallest_ts = undefined;
-
-    // 监听请求
-    subscriber.on(
-        'https://discord.com/api/v9/channels/1353165010582638713/messages',
-
-        wrapCatchFunction(async (response) => {
-            let data = await getBodyJson(response)
-
-            if (!Array.isArray(data)) {
-                return
-            }
-
-            const msgs = data.map((item) => {
-                const typeMatch = item.content.match(checkReg)?.[1]
-                const ts = dayjs.utc(item.timestamp).tz('Asia/Shanghai').valueOf()
-                // @ts-ignore
-                const type = TYPES[typeMatch]
-
-                if (type === 0) {
-                    // 提取关键信息
-                    const res = item.content.match(killReg) || []
-                    const [_, subject, object, objectId, map] = res
-
-                    const note = {
-                        ts,
-                        type: 0,
-                        key: `${ts}_${subject}_${objectId}`,
-                        subject,
-                        object,
-                        objectId,
-                        map,
-                        origin: item.content,
-                        utc: dayjs.utc(item.timestamp).valueOf(),
-                    }
-
-                    return {
-                        ...item,
-                        note
-                    }
-                } else if (type === 1) {
-
-                    // 提取关键信息
-                    const res = item.content.match(dropReg) || []
-                    const [_, subject, object, objectId] = res
-
-                    const note = {
-                        ts,
-                        type: 1,
-                        key: `${ts}_${subject}_${objectId}`,
-                        subject,
-                        object,
-                        objectId,
-                        origin: item.content,
-                        utc: dayjs.utc(item.timestamp).valueOf(),
-                    }
-
-                    return {
-                        ...item,
-                        note
-                    }
-                } else if (type === 2) {
-                    // 提取关键信息
-                    const res = item.content.match(stoleReg) || []
-                    const [_, subject, object, objectId] = res
-
-                    const note = {
-                        ts,
-                        type: 2,
-                        key: `${ts}_${subject}_${objectId}`,
-                        subject,
-                        object,
-                        objectId,
-                        origin: item.content,
-                        utc: dayjs.utc(item.timestamp).valueOf(),
-                    }
-
-                    return {
-                        ...item,
-                        note
-                    }
-                }
-                return item
-
-            })
-            // @ts-ignore
-            const sendData = msgs.filter(item => item.note).map(item => item.note)
-            logger.info('发送数据', sendData)
-            const res = await axios.post('https://boboan.net/api/momoro/ingamenews/push', sendData)
-
-            if (res.data.code === '000000') {
-
-                news_smallest_ts = sendData.reduce((prev, curr) => {
-                    return Math.min(prev, curr.utc)
-                }, sendData[0].utc)
-            }
-        })
-    );
-
-    // 获取最新时间
-    const ts = await getLastestTs();
-
-    // 打开页面
-    await page.goto(
-        'https://discord.com/channels/1188424174012731432/1353165010582638713',
-    );
-
-    // Remove the page's default timeout function
-    await page.setDefaultNavigationTimeout(0);
-
-    await sleep(5000);
-
-    logger.info('打开页面');
-
-    logger.info('等待加载完成');
+async function main() {
+    const browser = await launchBrowser()
 
     try {
-        await page.waitForSelector('div [data-jump-section="global"]');
-    } catch (e) {
-        logger.error('waitForSelector 错误了');
-        throw e
-        // 终止
-    }
+        const page = await browser.newPage();
 
-    await sleep(2000);
+        // 监听请求
+        const subscriber = new RequestSubscriber(page);
 
-    logger.info('最新时间:', ts, news_smallest_ts);
+        let news_smallest_ts = undefined;
 
-    while (!news_smallest_ts || ts < news_smallest_ts) {
-        logger.info(`滚动, 抓取的数据最早ts:${news_smallest_ts},本次启动数据库最新时间:${ts}`);
-        await scrollElement(page, `div [data-jump-section='global']`);
-    }
+        // 监听请求
+        subscriber.on(
+            'https://discord.com/api/v9/channels/1353165010582638713/messages',
 
-    await sleep(1000);
+            wrapCatchFunction(async (response) => {
+                let data = await getBodyJson(response)
 
-    await page.close();
+                if (!Array.isArray(data)) {
+                    return
+                }
 
-    return {
-        ts,
-        news_smallest_ts
+                const msgs = data.map((item) => {
+                    const typeMatch = item.content.match(checkReg)?.[1]
+                    const ts = dayjs.utc(item.timestamp).tz('Asia/Shanghai').valueOf()
+                    // @ts-ignore
+                    const type = TYPES[typeMatch]
+
+                    if (type === 0) {
+                        // 提取关键信息
+                        const res = item.content.match(killReg) || []
+                        const [_, subject, object, objectId, map] = res
+
+                        const note = {
+                            ts,
+                            type: 0,
+                            key: `${ts}_${subject}_${objectId}`,
+                            subject,
+                            object,
+                            objectId,
+                            map,
+                            origin: item.content,
+                            utc: dayjs.utc(item.timestamp).valueOf(),
+                        }
+
+                        return {
+                            ...item,
+                            note
+                        }
+                    } else if (type === 1) {
+
+                        // 提取关键信息
+                        const res = item.content.match(dropReg) || []
+                        const [_, subject, object, objectId] = res
+
+                        const note = {
+                            ts,
+                            type: 1,
+                            key: `${ts}_${subject}_${objectId}`,
+                            subject,
+                            object,
+                            objectId,
+                            origin: item.content,
+                            utc: dayjs.utc(item.timestamp).valueOf(),
+                        }
+
+                        return {
+                            ...item,
+                            note
+                        }
+                    } else if (type === 2) {
+                        // 提取关键信息
+                        const res = item.content.match(stoleReg) || []
+                        const [_, subject, object, objectId] = res
+
+                        const note = {
+                            ts,
+                            type: 2,
+                            key: `${ts}_${subject}_${objectId}`,
+                            subject,
+                            object,
+                            objectId,
+                            origin: item.content,
+                            utc: dayjs.utc(item.timestamp).valueOf(),
+                        }
+
+                        return {
+                            ...item,
+                            note
+                        }
+                    }
+                    return item
+
+                })
+                // @ts-ignore
+                const sendData = msgs.filter(item => item.note).map(item => item.note)
+                logger.info('发送数据', sendData)
+                const res = await axios.post('https://boboan.net/api/momoro/ingamenews/push', sendData)
+
+                if (res.data.code === '000000') {
+
+                    news_smallest_ts = sendData.reduce((prev, curr) => {
+                        return Math.min(prev, curr.utc)
+                    }, sendData[0].utc)
+                }
+            })
+        );
+
+        // 获取最新时间
+        const ts = await getLastestTs();
+
+        // 打开页面
+        await page.goto(
+            'https://discord.com/channels/1188424174012731432/1353165010582638713',
+        );
+
+        // Remove the page's default timeout function
+        await page.setDefaultNavigationTimeout(0);
+
+        await sleep(5000);
+
+        logger.info('打开页面');
+
+        logger.info('等待加载完成');
+
+        try {
+            await page.waitForSelector('div [data-jump-section="global"]');
+        } catch (e) {
+            logger.error('waitForSelector 错误了');
+            throw e
+            // 终止
+        }
+
+        await sleep(2000);
+
+        logger.info('最新时间:', ts, news_smallest_ts);
+
+        while (!news_smallest_ts || ts < news_smallest_ts) {
+            logger.info(`滚动, 抓取的数据最早ts:${news_smallest_ts},本次启动数据库最新时间:${ts}`);
+            await scrollElement(page, `div [data-jump-section='global']`);
+        }
+
+        await sleep(1000);
+
+        await page.close();
+
+        return {
+            ts,
+            news_smallest_ts
+        }
+    } finally {
+        await browser.disconnect();
     }
 }
 
@@ -287,4 +283,4 @@ async function getBodyJson(response) {
 }
 
 
-module.exports = capture
+main()
