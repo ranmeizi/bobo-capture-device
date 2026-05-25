@@ -121,6 +121,8 @@ async function beforeRequest(config) {
 
   config.headers.set('x-timestamp', timestamp)
   config.headers.set('x-nonce', nonce)
+
+  return config
 }
 
 module.exports = { calculateSignature, beforeRequest }
