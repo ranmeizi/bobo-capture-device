@@ -2,7 +2,12 @@ const axios = require('axios')
 const dayjs = require('dayjs')
 const utc = require('dayjs/plugin/utc')
 const timezone = require('dayjs/plugin/timezone')
+const { beforeRequest } = require('../libs/sign')
 const { sleep, launchBrowser, logger } = require("cdp-client-tool");
+
+const client = axios.create();
+
+client.interceptors.request.use(beforeRequest);
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -130,7 +135,7 @@ async function main() {
                 // @ts-ignore
                 const sendData = msgs.filter(item => item.note).map(item => item.note)
                 logger.info('发送数据', sendData)
-                const res = await axios.post('https://boboan.net/api/momoro/ingamenews/push', sendData)
+                const res = await client.post('https://boboan.net/api/momoro/ingamenews/push', sendData)
 
                 if (res.data.code === '000000') {
 
@@ -242,7 +247,7 @@ class RequestSubscriber {
 
 // 从接口获取最新时间
 async function getLastestTs() {
-    return axios.get('https://boboan.net/api/momoro/getLastestTs').then(res => res.data.data)
+    return client.get('https://boboan.net/api/momoro/getLastestTs').then(res => res.data.data)
 }
 async function scrollElement(page, selector, duration = 1000) {
     // 执行滚动

@@ -5,7 +5,7 @@
 import { Client, EVENTS } from "cdp-client-tool";
 
 const client = new Client({
-  deviceName: "lenovo L79031",
+  deviceName: "Boboan's Macos",
   gateways: [
     {
       name: "boboan.net",
