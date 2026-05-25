@@ -137,7 +137,7 @@ async function main() {
                 // logger.info('发送数据', sendData)
                 const res = await client.post('https://boboan.net/api/momoro/ingamenews/push', sendData)
 
-                if (res.data.code === '000000') {x
+                if (res.data.code === '000000') {
                     news_smallest_ts = sendData.reduce((prev, curr) => {
                         return Math.min(prev, curr.utc)
                     }, sendData[0].utc)
