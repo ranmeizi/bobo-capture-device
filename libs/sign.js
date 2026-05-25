@@ -11,6 +11,15 @@ async function calculateSignature(signString, appSecret) {
     .toLowerCase()
 }
 
+function canJsonSerialize(value) {
+  try {
+    JSON.stringify(value)
+    return true
+  } catch {
+    return false // 循环引用、BigInt 等
+  }
+}
+
 function normalizeValue(value) {
   if (value === null || value === undefined) {
     return ''
@@ -57,10 +66,9 @@ function normalizeValue(value) {
 async function beforeRequest(config) {
   const timestamp = Date.now()
   const nonce = Math.floor(Math.random() * 1000000000)
+  console.log('config', config.headers)
   const contentType =
-    config.headers['content-type'] || config.headers['Content-Type']
-
-  console.log('beforeRequest', contentType, config)
+    config.headers['content-type'] || config.headers['Content-Type'] || ''
 
   if (config.method?.toLocaleUpperCase() === 'GET') {
     const sign = normalizeValue({
@@ -110,6 +118,16 @@ async function beforeRequest(config) {
       ...(config.data || {}),
       file: undefined,
       files: undefined,
+      timestamp,
+      nonce,
+    })
+    config.headers.set(
+      'x-signature',
+      await calculateSignature(sign, 'function'),
+    )
+  } else if(config.method?.toLocaleUpperCase() === 'POST' && canJsonSerialize(config.data)){
+    const sign = normalizeValue({
+      ...(config.data || {}),
       timestamp,
       nonce,
     })
