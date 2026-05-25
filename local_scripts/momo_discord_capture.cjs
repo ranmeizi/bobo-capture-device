@@ -63,7 +63,6 @@ async function main() {
                 const msgs = data.map((item) => {
                     const typeMatch = item.content.match(checkReg)?.[1]
                     const ts = dayjs.utc(item.timestamp).tz('Asia/Shanghai').valueOf()
-                    console.log('see', item.timestamp, ts)
                     // @ts-ignore
                     const type = TYPES[typeMatch]
 
@@ -138,14 +137,10 @@ async function main() {
                 // logger.info('发送数据', sendData)
                 const res = await client.post('https://boboan.net/api/momoro/ingamenews/push', sendData)
 
-                if (res.data.code === '000000') {
-
-                    console.log('c亨功了')
+                if (res.data.code === '000000') {x
                     news_smallest_ts = sendData.reduce((prev, curr) => {
                         return Math.min(prev, curr.utc)
                     }, sendData[0].utc)
-                } else {
-                    console.log('什么玩意', res.data)
                 }
             })
         );
