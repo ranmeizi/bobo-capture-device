@@ -4,7 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node src/main.ts"
+    "start": "ts-node src/main.ts",
+    "pm2:start": "bash scripts/pm2.sh start",
+    "pm2:stop": "bash scripts/pm2.sh stop",
+    "pm2:restart": "bash scripts/pm2.sh restart",
+    "pm2:logs": "bash scripts/pm2.sh logs",
+    "pm2:status": "bash scripts/pm2.sh status"
   },
   "keywords": [],
   "author": "",
