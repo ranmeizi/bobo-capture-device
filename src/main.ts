@@ -1,29 +1,45 @@
-/**
- * client 子工程引用根目录开发的 cdp-client-tool 模块
- * 使用前需在仓库根目录执行: pnpm run build
- */
-import { Client, EVENTS } from "cdp-client-tool";
+import { Client, EVENTS, launchBrowser, logger } from 'cdp-client-tool'
+import { DiscordWsListener } from './discord-ws-listener'
+import { runInitialHttpSync } from './initial-http-sync'
 
 const client = new Client({
   deviceName: "Boboan's Macos",
   gateways: [
     {
-      name: "boboan.net",
-      uri: "https://boboan.net/cct_ws",
+      name: 'boboan.net',
+      uri: 'https://boboan.net/cct_ws',
       opts: {
         transports: ['websocket'],
         path: '/socket.io',
-      }
+      },
     },
-    // {
-    //   name: 'private-yd-28',
-    //   uri: 'http://192.168.240.194:3000/cct_ws',
-    //   opts: {
-    //     transports: ['websocket'],
-    //     path: '/socket.io',
-    //   }
-    // }
   ],
-});
+})
 
-console.log("Client 已创建，事件枚举:", EVENTS);
+const wsListener = new DiscordWsListener({})
+
+async function bootstrap(): Promise<void> {
+  const browser = await launchBrowser()
+
+  logger.info('[main] ① HTTP 补拉：对比数据库 ts，滚动抓取未入库消息')
+  const { page, dbTs, caughtUpTs } = await runInitialHttpSync(browser)
+  logger.info('[main] HTTP 补拉结束', { dbTs, caughtUpTs })
+
+  logger.info('[main] ② WS 增量监听')
+  await wsListener.start(browser, { page })
+}
+
+bootstrap().catch((err) => logger.error('[main] 启动失败', err))
+
+process.on('SIGINT', async () => {
+  logger.info('[main] 正在退出...')
+  await wsListener.stop()
+  process.exit(0)
+})
+
+process.on('SIGTERM', async () => {
+  await wsListener.stop()
+  process.exit(0)
+})
+
+console.log('Client 已创建，事件枚举:', EVENTS)
