@@ -77,6 +77,49 @@ async function scrollElement(
   await sleep(duration)
 }
 
+async function openChannelPage(page: Page, channelUrl: string): Promise<void> {
+  await page.goto(channelUrl, { waitUntil: 'domcontentloaded' })
+  await page.waitForFunction(
+    (part) => window.location.href.includes(part),
+    { timeout: 60_000 },
+    '/channels/',
+  )
+  await sleep(5000)
+}
+
+async function waitForChannelScroller(
+  page: Page,
+  maxAttempts = 3,
+): Promise<void> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      if (page.isClosed()) {
+        throw new Error('page 已关闭')
+      }
+      await page.waitForSelector('div [data-jump-section="global"]', {
+        timeout: 45_000,
+      })
+      return
+    } catch (error) {
+      const msg = String(error)
+      const retriable =
+        msg.includes('detached') ||
+        msg.includes('closed') ||
+        msg.includes('Target closed')
+
+      if (retriable && attempt < maxAttempts) {
+        logger.warn(
+          `[http-sync] 页面 frame 异常，reload 重试 (${attempt}/${maxAttempts})`,
+        )
+        await page.reload({ waitUntil: 'domcontentloaded' })
+        await sleep(5000)
+        continue
+      }
+      throw error
+    }
+  }
+}
+
 /**
  * HTTP 补拉：对比数据库 latestTs，滚动频道页触发 messages 接口，push 未入库数据
  */
@@ -127,12 +170,11 @@ export async function runInitialHttpSync(
   const onChannel = page.url().includes(channelUrl)
   if (!onChannel) {
     logger.info('[http-sync] 打开频道页:', channelUrl)
-    await page.goto(channelUrl, { waitUntil: 'domcontentloaded' })
-    await sleep(5000)
+    await openChannelPage(page, channelUrl)
   }
 
   logger.info('[http-sync] 等待频道加载')
-  await page.waitForSelector('div [data-jump-section="global"]')
+  await waitForChannelScroller(page)
   await sleep(2000)
 
   logger.info('[http-sync] 开始滚动补拉', { dbTs, newsSmallestTs })

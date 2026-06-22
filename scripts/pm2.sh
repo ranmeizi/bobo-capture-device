@@ -10,6 +10,10 @@ cmd="${1:-start}"
 
 case "$cmd" in
   start)
+    if ! curl -sf http://127.0.0.1:9222/json/version >/dev/null 2>&1; then
+      echo "Chrome CDP (9222) 未运行，先启动 Chrome…"
+      bash scripts/start-chrome-server.sh
+    fi
     pm2 start ecosystem.config.cjs
     pm2 save 2>/dev/null || true
     ;;
