@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "start": "ts-node src/main.ts",
-    "start:prod": "node dist/main.js",
+    "start:prod": "node index.js",
     "pm2:start": "bash scripts/pm2.sh start",
     "pm2:stop": "bash scripts/pm2.sh stop",
     "pm2:restart": "bash scripts/pm2.sh restart",
