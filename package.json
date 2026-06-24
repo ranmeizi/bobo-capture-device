@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "build": "tsc",
     "start": "ts-node src/main.ts",
+    "start:prod": "node dist/main.js",
     "pm2:start": "bash scripts/pm2.sh start",
     "pm2:stop": "bash scripts/pm2.sh stop",
     "pm2:restart": "bash scripts/pm2.sh restart",

@@ -14,6 +14,8 @@ case "$cmd" in
       echo "Chrome CDP (9222) 未运行，先启动 Chrome…"
       bash scripts/start-chrome-server.sh
     fi
+    echo "编译 TypeScript…"
+    pnpm run build
     pm2 start ecosystem.config.cjs
     pm2 save 2>/dev/null || true
     ;;
@@ -21,6 +23,7 @@ case "$cmd" in
     pm2 stop bobo-cap
     ;;
   restart)
+    pnpm run build
     pm2 restart bobo-cap
     ;;
   delete)

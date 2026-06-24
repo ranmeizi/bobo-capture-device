@@ -6,8 +6,8 @@ module.exports = {
     {
       name: 'bobo-cap',
       cwd: __dirname,
-      script: 'src/main.ts',
-      interpreter: path.join(__dirname, 'node_modules/.bin/ts-node'),
+      script: 'dist/main.js',
+      interpreter: 'node',
       exec_mode: 'fork',
       instances: 1,
       autorestart: true,
