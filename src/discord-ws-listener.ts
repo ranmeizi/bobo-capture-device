@@ -13,7 +13,9 @@ const {
   isDiscordGatewayUrl,
 } = require('../libs/discord-gateway-decoder')
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { parseMomoNote, pushMomoNotes } = require('../libs/momo-message')
+const { parseMomoNote } = require('../libs/momo-message')
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const outbox = require('../libs/outbox')
 
 const DEFAULT_GUILD_ID = DISCORD_GUILD_ID
 
@@ -385,17 +387,12 @@ export class DiscordWsListener {
     if (!note) return
 
     this.lastMessageAt = Date.now()
-    logger.info('[discord-ws] MESSAGE_CREATE', note.key)
 
-    try {
-      const res = await pushMomoNotes([note])
-      if (res?.code === '000000') {
-        logger.success('[discord-ws] push 成功', note.key)
-      } else {
-        logger.warn('[discord-ws] push 非成功', res)
-      }
-    } catch (err) {
-      logger.error('[discord-ws] push 失败', err)
+    const { enqueued } = outbox.enqueue(note)
+    if (enqueued) {
+      logger.info('[discord-ws] 已入队 outbox', note.key)
+    } else {
+      logger.info('[discord-ws] outbox 已存在，跳过', note.key)
     }
   }
 }

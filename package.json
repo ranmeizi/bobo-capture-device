@@ -11,7 +11,11 @@
     "pm2:stop": "bash scripts/pm2.sh stop",
     "pm2:restart": "bash scripts/pm2.sh restart",
     "pm2:logs": "bash scripts/pm2.sh logs",
-    "pm2:status": "bash scripts/pm2.sh status"
+    "pm2:status": "bash scripts/pm2.sh status",
+    "outbox:stats": "node scripts/outbox-retry.js stats",
+    "outbox:list": "node scripts/outbox-retry.js list",
+    "outbox:reset": "node scripts/outbox-retry.js reset",
+    "outbox:push": "node scripts/outbox-retry.js push"
   },
   "keywords": [],
   "author": "",
