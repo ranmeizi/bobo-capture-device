@@ -6,6 +6,7 @@ import {
   DISCORD_GUILD_ID,
 } from './discord-config'
 import { runInitialHttpSync } from './initial-http-sync'
+import { reportWsConnected, reportWsDisconnected } from './sentry-lifecycle'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const {
@@ -61,6 +62,12 @@ export class DiscordWsListener {
   private lastFrameAt: number | null = null
   private lastMessageAt: number | null = null
   private gatewayConnected = false
+  /** 本轮会话是否已经向 Sentry 上报过 READY */
+  private wsReportedConnected = false
+  /** 本轮断开是否已经上报，避免 reload 和 webSocketClosed 各打一条 */
+  private disconnectReported = false
+  private gatewayConnectedAt: number | null = null
+  private stopping = false
   private recovering = false
   private lastRecoveryAt = 0
   private circuitFailures = 0
@@ -123,13 +130,14 @@ export class DiscordWsListener {
     this.startHealthCheck()
   }
 
-  async stop(): Promise<void> {
+  async stop(reason = 'process-stop'): Promise<void> {
+    this.stopping = true
     if (this.healthTimer) clearInterval(this.healthTimer)
     this.healthTimer = null
+    this.markDisconnected(reason)
     await this.detachCdp()
     this.page = null
     this.browser = null
-    this.gatewayConnected = false
     this.gatewayRequestIds.clear()
     this.decoder.reset()
   }
@@ -193,7 +201,6 @@ export class DiscordWsListener {
 
     this.recovering = true
     this.lastRecoveryAt = Date.now()
-    this.gatewayConnected = false
 
     try {
       logger.warn(
@@ -239,6 +246,8 @@ export class DiscordWsListener {
   }
 
   private async reloadTab(): Promise<void> {
+    this.markDisconnected('reload')
+
     if (!this.page) {
       await this.attachToDiscordTab()
       return
@@ -247,7 +256,6 @@ export class DiscordWsListener {
     logger.info('[discord-ws] reload tab')
     this.decoder.reset()
     this.gatewayRequestIds.clear()
-    this.gatewayConnected = false
 
     await this.detachCdp()
     await this.attachCdp(this.page)
@@ -309,8 +317,9 @@ export class DiscordWsListener {
     this.cdp.on('Network.webSocketClosed', ({ requestId }) => {
       if (!this.gatewayRequestIds.has(requestId)) return
       this.gatewayRequestIds.delete(requestId)
-      this.gatewayConnected = false
+      this.markDisconnected('gateway-closed', true)
       logger.warn('[discord-ws] Gateway WS 已关闭')
+      if (this.stopping || this.recovering) return
       void this.tripCircuitBreaker('gateway-closed')
     })
 
@@ -367,13 +376,45 @@ export class DiscordWsListener {
     }
 
     if (message.t === 'READY') {
-      this.gatewayConnected = true
+      this.markConnected('READY')
       logger.success('[discord-ws] Gateway READY')
     }
 
     if (message.t !== 'MESSAGE_CREATE') return
 
     void this.handleMessageCreate(message.d)
+  }
+
+  /** 只在本轮第一次 READY 时上报，心跳不会重复打点。 */
+  private markConnected(signal: string): void {
+    this.gatewayConnected = true
+    if (this.wsReportedConnected) return
+    this.wsReportedConnected = true
+    this.disconnectReported = false
+    this.gatewayConnectedAt = Date.now()
+    reportWsConnected(signal)
+  }
+
+  /** 同一轮断开只上报一次。force 用于 socket 已从集合里删掉、但关闭本身仍要计数。 */
+  private markDisconnected(reason: string, force = false): void {
+    const wasReady = this.wsReportedConnected
+    const hadConnection =
+      force ||
+      wasReady ||
+      this.gatewayConnected ||
+      this.gatewayRequestIds.size > 0
+    const connectedMs =
+      this.gatewayConnectedAt != null
+        ? Date.now() - this.gatewayConnectedAt
+        : undefined
+
+    this.gatewayConnected = false
+    this.wsReportedConnected = false
+    this.gatewayConnectedAt = null
+
+    if (!hadConnection || this.disconnectReported) return
+    this.disconnectReported = true
+    reportWsDisconnected({ reason, connectedMs, wasReady })
   }
 
   private async handleMessageCreate(

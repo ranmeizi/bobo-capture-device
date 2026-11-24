@@ -2,6 +2,12 @@ import { Client, EVENTS, logger } from 'cdp-client-tool'
 import { connectBrowser } from './connect-browser'
 import { DiscordWsListener } from './discord-ws-listener'
 import { runInitialHttpSync } from './initial-http-sync'
+import {
+  flushSentry,
+  reportProcessExit,
+  reportProcessStart,
+  reportProcessStartFailed,
+} from './sentry-lifecycle'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const {
@@ -9,10 +15,30 @@ const {
   stopOutboxWorker,
 } = require('../libs/outbox-worker')
 
-const wsListener = new DiscordWsListener({})
-
 /** 等浏览器补拉完成后再连网关，避免服务端脚本抢占/断开 Chrome */
 let client: Client | null = null
+let shuttingDown = false
+
+async function shutdown(reason: string, exitCode: number): Promise<void> {
+  if (shuttingDown) return
+  shuttingDown = true
+  logger.info(`[main] 正在退出 (${reason})...`)
+  stopOutboxWorker()
+  try {
+    await wsListener.stop(reason)
+  } catch (err) {
+    logger.error('[main] 停止 WS 监听失败', err)
+  }
+  reportProcessExit(reason, exitCode)
+  await flushSentry()
+  process.exit(exitCode)
+}
+
+const wsListener = new DiscordWsListener({
+  onCircuitOpen: () => {
+    void shutdown('circuit_open', 1)
+  },
+})
 
 function createGatewayClient(): Client {
   return new Client({
@@ -31,6 +57,7 @@ function createGatewayClient(): Client {
 }
 
 async function bootstrap(): Promise<void> {
+  reportProcessStart()
   startOutboxWorker()
 
   const browser = await connectBrowser()
@@ -47,17 +74,22 @@ async function bootstrap(): Promise<void> {
   logger.success('[main] 启动完成', { events: EVENTS })
 }
 
-bootstrap().catch((err) => logger.error('[main] 启动失败', err))
-
-process.on('SIGINT', async () => {
-  logger.info('[main] 正在退出...')
-  stopOutboxWorker()
-  await wsListener.stop()
-  process.exit(0)
+bootstrap().catch(async (err) => {
+  logger.error('[main] 启动失败', err)
+  reportProcessStartFailed(err)
+  await flushSentry()
 })
 
-process.on('SIGTERM', async () => {
-  stopOutboxWorker()
-  await wsListener.stop()
-  process.exit(0)
+process.on('SIGINT', () => {
+  void shutdown('SIGINT', 0)
+})
+
+process.on('SIGTERM', () => {
+  void shutdown('SIGTERM', 0)
+})
+
+process.on('uncaughtException', (err) => {
+  logger.error('[main] uncaughtException', err)
+  if (shuttingDown) process.exit(1)
+  void shutdown('uncaughtException', 1)
 })
