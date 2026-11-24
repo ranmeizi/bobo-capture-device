@@ -10,7 +10,7 @@ module.exports = {
       cwd: root,
       script: path.join(root, 'dist/main.js'),
       interpreter: 'node',
-      node_args: `--import ${path.join(root, 'scripts/instrument.mjs')}`,
+      node_args: `--import ${path.join(root, 'dist/instrument.mjs')}`,
       exec_mode: 'fork',
       instances: 1,
       autorestart: true,

@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && cp scripts/instrument.mjs dist/instrument.mjs",
     "start": "node --import ./scripts/instrument.mjs -r ts-node/register src/main.ts",
-    "start:prod": "node --import ./scripts/instrument.mjs dist/main.js",
+    "start:prod": "node --import ./dist/instrument.mjs dist/main.js",
     "pm2:start": "bash scripts/pm2.sh start",
     "pm2:stop": "bash scripts/pm2.sh stop",
     "pm2:restart": "bash scripts/pm2.sh restart",

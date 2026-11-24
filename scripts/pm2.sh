@@ -16,8 +16,8 @@ case "$cmd" in
     fi
     echo "编译 TypeScript…"
     pnpm run build
-    if [ ! -f scripts/instrument.mjs ] || [ ! -f dist/main.js ]; then
-      echo "错误: dist/main.js 或 scripts/instrument.mjs 不存在"
+    if [ ! -f dist/instrument.mjs ] || [ ! -f dist/main.js ]; then
+      echo "错误: dist/main.js 或 dist/instrument.mjs 不存在"
       exit 1
     fi
     # delete 后再 start，确保 node_args / script 生效
@@ -31,8 +31,8 @@ case "$cmd" in
   restart)
     echo "编译 TypeScript…"
     pnpm run build
-    if [ ! -f scripts/instrument.mjs ] || [ ! -f dist/main.js ]; then
-      echo "错误: dist/main.js 或 scripts/instrument.mjs 不存在"
+    if [ ! -f dist/instrument.mjs ] || [ ! -f dist/main.js ]; then
+      echo "错误: dist/main.js 或 dist/instrument.mjs 不存在"
       exit 1
     fi
     pm2 delete bobo-cap 2>/dev/null || true
