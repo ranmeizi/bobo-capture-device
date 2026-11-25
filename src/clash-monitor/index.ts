@@ -152,6 +152,9 @@ function startServer(): void {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
     res.end(page())
   })
+  server.on('error', (err) => {
+    console.error('[clash] 状态页监听失败', err)
+  })
   server.listen(STATUS_PORT, '0.0.0.0', () => {
     console.log(`[clash] 状态页 http://0.0.0.0:${STATUS_PORT}`)
   })
