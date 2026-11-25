@@ -177,15 +177,18 @@ function reportLine(node: string, delayMs: number): void {
   const now = Date.now()
   if (now - lastSentryAt < SENTRY_INTERVAL_MS) return
   lastSentryAt = now
+  const delay = String(delayMs)
   Sentry.withScope((scope) => {
     scope.setLevel('info')
     scope.setTag('service', 'bobo-cap')
     scope.setTag('phase', 'clash')
     scope.setTag('node', node)
-    scope.setExtra('node', node)
-    scope.setExtra('delayMs', delayMs)
+    scope.setTag('delayMs', delay)
     scope.setFingerprint(['bobo-cap', 'clash'])
-    Sentry.captureMessage(`clash ${node} ${delayMs}ms`, 'info')
+    Sentry.captureEvent({
+      message: `${node} ${delay}`,
+      level: 'info',
+    })
   })
   Sentry.metrics.gauge('clash.delay', delayMs, {
     unit: 'millisecond',
