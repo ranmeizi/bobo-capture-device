@@ -1,3 +1,6 @@
+import { fork, type ChildProcess } from 'child_process'
+import fs from 'fs'
+import path from 'path'
 import { Client, EVENTS, logger } from 'cdp-client-tool'
 import { connectBrowser } from './connect-browser'
 import { DiscordWsListener } from './discord-ws-listener'
@@ -18,6 +21,25 @@ const {
 /** 等浏览器补拉完成后再连网关，避免服务端脚本抢占/断开 Chrome */
 let client: Client | null = null
 let shuttingDown = false
+let clashChild: ChildProcess | null = null
+
+function startClashMonitor(): void {
+  const script = path.join(__dirname, 'clash-monitor/index.js')
+  if (!fs.existsSync(script)) {
+    logger.warn('[clash] 未找到监控脚本，跳过', script)
+    return
+  }
+  clashChild = fork(script, [], { stdio: 'inherit' })
+  clashChild.on('exit', (code, signal) => {
+    logger.warn('[clash] 监控进程退出', { code, signal })
+    clashChild = null
+  })
+}
+
+function stopClashMonitor(): void {
+  clashChild?.kill('SIGTERM')
+  clashChild = null
+}
 
 async function shutdown(reason: string, exitCode: number): Promise<void> {
   if (shuttingDown) return
@@ -26,6 +48,7 @@ async function shutdown(reason: string, exitCode: number): Promise<void> {
   // 先发出退出事件。CDP detach 可能卡住，pm2 会在 kill_timeout 后 SIGKILL。
   reportProcessExit(reason, exitCode)
   await flushSentry(4000)
+  stopClashMonitor()
   stopOutboxWorker()
   try {
     await Promise.race([
@@ -62,6 +85,7 @@ function createGatewayClient(): Client {
 
 async function bootstrap(): Promise<void> {
   reportProcessStart()
+  startClashMonitor()
   startOutboxWorker()
 
   const browser = await connectBrowser()
