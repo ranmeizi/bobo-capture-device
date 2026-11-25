@@ -1,6 +1,6 @@
 import { fork, type ChildProcess } from 'child_process'
-import fs from 'fs'
-import path from 'path'
+import * as fs from 'fs'
+import * as path from 'path'
 import { Client, EVENTS, logger } from 'cdp-client-tool'
 import { connectBrowser } from './connect-browser'
 import { DiscordWsListener } from './discord-ws-listener'

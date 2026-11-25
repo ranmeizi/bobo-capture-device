@@ -1,7 +1,7 @@
 import { execFile } from 'child_process'
-import fs from 'fs'
-import http from 'http'
-import path from 'path'
+import * as fs from 'fs'
+import * as http from 'http'
+import * as path from 'path'
 import axios from 'axios'
 import * as Sentry from '@sentry/node'
 
