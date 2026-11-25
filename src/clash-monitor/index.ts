@@ -177,11 +177,33 @@ function reportLine(node: string, delayMs: number): void {
   const now = Date.now()
   if (now - lastSentryAt < SENTRY_INTERVAL_MS) return
   lastSentryAt = now
+  Sentry.withScope((scope) => {
+    scope.setLevel('info')
+    scope.setTag('service', 'bobo-cap')
+    scope.setTag('phase', 'clash')
+    scope.setTag('node', node)
+    scope.setExtra('node', node)
+    scope.setExtra('delayMs', delayMs)
+    scope.setFingerprint(['bobo-cap', 'clash'])
+    Sentry.captureMessage(`clash ${node} ${delayMs}ms`, 'info')
+  })
   Sentry.metrics.gauge('clash.delay', delayMs, {
     unit: 'millisecond',
     attributes: { node },
   })
   console.log(`[clash] sentry ${node} ${delayMs}ms`)
+}
+
+async function reportOnStartup(): Promise<void> {
+  for (let i = 0; i < 5; i++) {
+    await refresh()
+    if (lastSentryAt > 0) {
+      await Sentry.flush(2000)
+      return
+    }
+    await new Promise((resolve) => setTimeout(resolve, 3000))
+  }
+  console.warn('[clash] 启动未上报，还没有节点和延迟')
 }
 
 async function loadProxies(): Promise<Record<string, Proxy> | null> {
@@ -590,7 +612,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
 
 startServer()
 
-void refresh()
+void reportOnStartup()
 setInterval(() => {
   void refresh()
 }, SENTRY_INTERVAL_MS)
