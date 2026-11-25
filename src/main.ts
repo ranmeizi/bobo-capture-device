@@ -23,14 +23,18 @@ async function shutdown(reason: string, exitCode: number): Promise<void> {
   if (shuttingDown) return
   shuttingDown = true
   logger.info(`[main] 正在退出 (${reason})...`)
+  // 先发出退出事件。CDP detach 可能卡住，pm2 会在 kill_timeout 后 SIGKILL。
+  reportProcessExit(reason, exitCode)
+  await flushSentry(4000)
   stopOutboxWorker()
   try {
-    await wsListener.stop(reason)
+    await Promise.race([
+      wsListener.stop(reason),
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+    ])
   } catch (err) {
     logger.error('[main] 停止 WS 监听失败', err)
   }
-  reportProcessExit(reason, exitCode)
-  await flushSentry()
   process.exit(exitCode)
 }
 

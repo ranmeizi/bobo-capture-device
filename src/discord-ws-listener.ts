@@ -334,12 +334,16 @@ export class DiscordWsListener {
 
   private async detachCdp(): Promise<void> {
     if (!this.cdp) return
+    const cdp = this.cdp
+    this.cdp = null
     try {
-      await this.cdp.detach()
+      await Promise.race([
+        cdp.detach(),
+        new Promise((resolve) => setTimeout(resolve, 1500)),
+      ])
     } catch {
       // tab 可能已关闭
     }
-    this.cdp = null
   }
 
   private handleGatewayFrame(

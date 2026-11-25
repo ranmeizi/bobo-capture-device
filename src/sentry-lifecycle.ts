@@ -2,6 +2,9 @@ import * as Sentry from '@sentry/node'
 
 type Extra = Record<string, string | number | boolean | undefined>
 
+/** 与 process start 事件对齐，退出时记在事件上，方便对照。 */
+const processStartedAt = Date.now()
+
 function report(
   message: string,
   phase: string,
@@ -36,6 +39,7 @@ export function reportProcessStartFailed(err: unknown): void {
 
 /** 进程即将退出。这是健康时间线里的终止事件。 */
 export function reportProcessExit(reason: string, exitCode: number): void {
+  const uptimeMs = Date.now() - processStartedAt
   report(
     'bobo-cap process exit',
     'process_exit',
@@ -44,6 +48,7 @@ export function reportProcessExit(reason: string, exitCode: number): void {
       pid: process.pid,
       reason,
       exitCode,
+      uptimeMs,
     },
   )
 }
